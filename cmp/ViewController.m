@@ -7,21 +7,101 @@
 //
 
 #import "ViewController.h"
+#import "DuJPEGLibObject.h"
+
+#define kInitialCompressQuality 0.655
 
 @interface ViewController ()
+
+@property (weak, nonatomic) IBOutlet UIImageView *origin;
+@property (weak, nonatomic) IBOutlet UIImageView *compress;
+@property (nonatomic, strong) DuJPEGLibObject *jpegLibObject;
 
 @end
 
 @implementation ViewController
+- (IBAction)cleanMemoryAndRestartMemory:(id)sender
+{
+    _jpegLibObject = nil;
+    _compress.image = nil;
+}
 
-- (void)viewDidLoad {
+- (IBAction)onGoButtonClicked:(id)sender
+{
+    BOOL useAppleAPI = NO;
+    if (useAppleAPI) {
+        [self AppleAPIDo];
+    } else {
+        [self UseLibJPEG];
+    }
+}
+
+- (void)viewDidLoad
+{
     [super viewDidLoad];
+    _jpegLibObject = [DuJPEGLibObject jpegLibObject];
+    _origin.image = [UIImage imageNamed:@"hh"];
     // Do any additional setup after loading the view, typically from a nib.
 }
 
-- (void)didReceiveMemoryWarning {
+- (void)didReceiveMemoryWarning
+{
     [super didReceiveMemoryWarning];
     // Dispose of any resources that can be recreated.
 }
 
+- (void)UseLibJPEG
+{
+    if (_jpegLibObject == nil) {
+        _jpegLibObject = [DuJPEGLibObject jpegLibObject];
+    }
+    _jpegLibObject.imageFilePath = @"/Users/baidu/Documents/Xcode Projects/cmp/hh.jpg";
+    [_jpegLibObject compress];
+    NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory,NSUserDomainMask, YES);
+    NSString *date = [[NSDate date] description];
+    NSString *filePath = [[paths objectAtIndex:0] stringByAppendingPathComponent:[NSString stringWithFormat:@"%@.jpg", date]];   // 保存文件的名称
+    NSData *data = [_jpegLibObject imageData];
+    NSLog(@"%lu\n", (unsigned long)_jpegLibObject.lengthCompressed);
+    [data writeToFile:filePath atomically:NO];
+    _compress.image = [_jpegLibObject imageCompressed];
+}
+
+- (void)AppleAPIDo
+{
+    NSData *data = [self compressImage:_origin.image qualityLimit:0.4];
+    _compress.image = [UIImage imageWithData:data];
+    [self save:data];
+}
+
+- (NSData *)compressImage:(UIImage *)origin qualityLimit:(CGFloat)quality
+{
+    CGFloat totalSize = UIImageJPEGRepresentation(origin, 1).length / 1000.0;
+    NSData *imageData = UIImageJPEGRepresentation(origin, quality);
+    NSLog(@"origin size:%.3f KB, compress size:%.3f KB\n", totalSize, imageData.length / 1000.0);
+    return imageData;
+}
+
+- (NSData *)compressImage:(UIImage *)originImage originSizeKB:(CGFloat)originSize
+{
+    CGFloat quality = kInitialCompressQuality;
+    NSData *compressedImageData = UIImageJPEGRepresentation(originImage, quality);
+    CGFloat compressedImageSize = compressedImageData.length / 1000.0;
+    while (compressedImageSize > originSize && quality > 0.01) {
+        quality -= 0.1;
+        compressedImageData = UIImageJPEGRepresentation(originImage, quality);
+        compressedImageSize = compressedImageData.length / 1000.0;
+    }
+
+    return nil;
+}
+
+- (void)save:(NSData *)data
+{
+    NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory,NSUserDomainMask, YES);
+    NSString *date = [[NSDate date] description];
+    NSString *filePath = [[paths objectAtIndex:0] stringByAppendingPathComponent:[NSString stringWithFormat:@"%@.jpg", date]];   // 保存文件的名称
+    BOOL result = [data writeToFile:filePath atomically:YES]; // 保存成功会返回YES
+    NSLog(@"save at:%@\n", filePath);
+    NSLog(@"save state:%@\n",@(result));
+}
 @end

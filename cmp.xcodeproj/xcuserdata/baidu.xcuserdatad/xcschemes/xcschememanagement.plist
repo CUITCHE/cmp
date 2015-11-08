@@ -9,10 +9,20 @@
 			<key>orderHint</key>
 			<integer>0</integer>
 		</dict>
+		<key>cmpaaa.xcscheme</key>
+		<dict>
+			<key>orderHint</key>
+			<integer>1</integer>
+		</dict>
 	</dict>
 	<key>SuppressBuildableAutocreation</key>
 	<dict>
 		<key>E13547561BEB0629002F175D</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>E13548E91BEB20D3002F175D</key>
 		<dict>
 			<key>primary</key>
 			<true/>

@@ -13,6 +13,9 @@
 		E13547651BEB0629002F175D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = E13547631BEB0629002F175D /* Main.storyboard */; };
 		E13547671BEB0629002F175D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E13547661BEB0629002F175D /* Assets.xcassets */; };
 		E135476A1BEB0629002F175D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = E13547681BEB0629002F175D /* LaunchScreen.storyboard */; };
+		E13549A61BEB702E002F175D /* libjpeg.a in Frameworks */ = {isa = PBXBuildFile; fileRef = E13549A31BEB702E002F175D /* libjpeg.a */; };
+		E13549A91BEB87CB002F175D /* compress.c in Sources */ = {isa = PBXBuildFile; fileRef = E13549A71BEB87CB002F175D /* compress.c */; };
+		E15AD15B1BEDB5C600761985 /* DuJPEGLibObject.mm in Sources */ = {isa = PBXBuildFile; fileRef = E15AD15A1BEDB5C600761985 /* DuJPEGLibObject.mm */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -26,6 +29,23 @@
 		E13547661BEB0629002F175D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		E13547691BEB0629002F175D /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		E135476B1BEB0629002F175D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		E13549971BEB702E002F175D /* cderror.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = cderror.h; sourceTree = "<group>"; };
+		E13549981BEB702E002F175D /* cdjpeg.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = cdjpeg.h; sourceTree = "<group>"; };
+		E135499A1BEB702E002F175D /* jconfig.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = jconfig.h; sourceTree = "<group>"; };
+		E135499B1BEB702E002F175D /* jdct.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = jdct.h; sourceTree = "<group>"; };
+		E135499C1BEB702E002F175D /* jerror.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = jerror.h; sourceTree = "<group>"; };
+		E135499D1BEB702E002F175D /* jinclude.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = jinclude.h; sourceTree = "<group>"; };
+		E135499E1BEB702E002F175D /* jmemsys.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = jmemsys.h; sourceTree = "<group>"; };
+		E135499F1BEB702E002F175D /* jmorecfg.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = jmorecfg.h; sourceTree = "<group>"; };
+		E13549A01BEB702E002F175D /* jpegint.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = jpegint.h; sourceTree = "<group>"; };
+		E13549A11BEB702E002F175D /* jpeglib.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = jpeglib.h; sourceTree = "<group>"; };
+		E13549A21BEB702E002F175D /* jversion.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = jversion.h; sourceTree = "<group>"; };
+		E13549A31BEB702E002F175D /* libjpeg.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libjpeg.a; sourceTree = "<group>"; };
+		E13549A41BEB702E002F175D /* transupp.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = transupp.h; sourceTree = "<group>"; };
+		E13549A71BEB87CB002F175D /* compress.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = compress.c; sourceTree = "<group>"; };
+		E13549A81BEB87CB002F175D /* compress.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = compress.h; sourceTree = "<group>"; };
+		E15AD1591BEDB5C600761985 /* DuJPEGLibObject.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DuJPEGLibObject.h; sourceTree = "<group>"; };
+		E15AD15A1BEDB5C600761985 /* DuJPEGLibObject.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = DuJPEGLibObject.mm; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -33,6 +53,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E13549A61BEB702E002F175D /* libjpeg.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -42,6 +63,11 @@
 		E135474E1BEB0629002F175D = {
 			isa = PBXGroup;
 			children = (
+				E15AD1591BEDB5C600761985 /* DuJPEGLibObject.h */,
+				E15AD15A1BEDB5C600761985 /* DuJPEGLibObject.mm */,
+				E13549A71BEB87CB002F175D /* compress.c */,
+				E13549A81BEB87CB002F175D /* compress.h */,
+				E13549961BEB702E002F175D /* framework */,
 				E13547591BEB0629002F175D /* cmp */,
 				E13547581BEB0629002F175D /* Products */,
 			);
@@ -77,6 +103,26 @@
 				E135475B1BEB0629002F175D /* main.m */,
 			);
 			name = "Supporting Files";
+			sourceTree = "<group>";
+		};
+		E13549961BEB702E002F175D /* framework */ = {
+			isa = PBXGroup;
+			children = (
+				E13549971BEB702E002F175D /* cderror.h */,
+				E13549981BEB702E002F175D /* cdjpeg.h */,
+				E135499A1BEB702E002F175D /* jconfig.h */,
+				E135499B1BEB702E002F175D /* jdct.h */,
+				E135499C1BEB702E002F175D /* jerror.h */,
+				E135499D1BEB702E002F175D /* jinclude.h */,
+				E135499E1BEB702E002F175D /* jmemsys.h */,
+				E135499F1BEB702E002F175D /* jmorecfg.h */,
+				E13549A01BEB702E002F175D /* jpegint.h */,
+				E13549A11BEB702E002F175D /* jpeglib.h */,
+				E13549A21BEB702E002F175D /* jversion.h */,
+				E13549A31BEB702E002F175D /* libjpeg.a */,
+				E13549A41BEB702E002F175D /* transupp.h */,
+			);
+			path = framework;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -152,6 +198,8 @@
 				E13547621BEB0629002F175D /* ViewController.m in Sources */,
 				E135475F1BEB0629002F175D /* AppDelegate.m in Sources */,
 				E135475C1BEB0629002F175D /* main.m in Sources */,
+				E15AD15B1BEDB5C600761985 /* DuJPEGLibObject.mm in Sources */,
+				E13549A91BEB87CB002F175D /* compress.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -261,8 +309,13 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				GCC_C_LANGUAGE_STANDARD = c11;
 				INFOPLIST_FILE = cmp/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/framework",
+				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.baidu.cmp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
@@ -272,8 +325,13 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				GCC_C_LANGUAGE_STANDARD = c11;
 				INFOPLIST_FILE = cmp/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/framework",
+				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.baidu.cmp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
@@ -298,6 +356,7 @@
 				E13547701BEB0629002F175D /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
