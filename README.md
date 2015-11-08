@@ -1,6 +1,6 @@
 # cmp
 - 用Objective-C封装JPEGLIB库，目前暂时只提供压缩接口
-- 工程里已经添加了通用类型的编译后的jpeglib.a完全适用于模拟器和真机，以及32位64位的Unix操作系统上
+- 工程里已经添加了通用类型的编译后的libjpeg.a完全适用于模拟器和真机，以及32位64位的Unix操作系统上
 - JPEGLIB库采用的9a版本
 - Xcode 7.0
 - SDK iOS9.0 编译
