@@ -9,7 +9,7 @@
 #import "ViewController.h"
 #import "DuJPEGLibObject.h"
 
-#define kInitialCompressQuality 0.655
+#define kInitialCompressQuality 0.50
 
 @interface ViewController ()
 
@@ -24,10 +24,14 @@
 {
     _jpegLibObject = nil;
     _compress.image = nil;
+    _origin.image = nil;
 }
 
 - (IBAction)onGoButtonClicked:(id)sender
 {
+    if (!_origin.image) {
+        _origin.image = [UIImage imageNamed:@"hh"];
+    }
     BOOL useAppleAPI = NO;
     if (useAppleAPI) {
         [self AppleAPIDo];
@@ -39,8 +43,8 @@
 - (void)viewDidLoad
 {
     [super viewDidLoad];
-    _jpegLibObject = [DuJPEGLibObject jpegLibObject];
-    _origin.image = [UIImage imageNamed:@"hh"];
+    _jpegLibObject = [DuJPEGLibObject JPEGLibObject];
+
     // Do any additional setup after loading the view, typically from a nib.
 }
 
@@ -53,17 +57,22 @@
 - (void)UseLibJPEG
 {
     if (_jpegLibObject == nil) {
-        _jpegLibObject = [DuJPEGLibObject jpegLibObject];
+        _jpegLibObject = [DuJPEGLibObject JPEGLibObject];
     }
-    _jpegLibObject.imageFilePath = @"/Users/baidu/Documents/Xcode Projects/cmp/hh.jpg";
-    [_jpegLibObject compress];
-    NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory,NSUserDomainMask, YES);
-    NSString *date = [[NSDate date] description];
-    NSString *filePath = [[paths objectAtIndex:0] stringByAppendingPathComponent:[NSString stringWithFormat:@"%@.jpg", date]];   // 保存文件的名称
-    NSData *data = [_jpegLibObject imageData];
-    NSLog(@"%lu\n", (unsigned long)_jpegLibObject.lengthCompressed);
-    [data writeToFile:filePath atomically:NO];
-    _compress.image = [_jpegLibObject imageCompressed];
+    _jpegLibObject.imageFilePath = @"/Users/baidu/Documents/Xcode Projects/cmp/extra.jpg";
+    int errCode;
+    BOOL need = [_jpegLibObject pretreatment:&errCode];
+    if (errCode == 0 && need) {
+        [_jpegLibObject compress];
+        NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory,NSUserDomainMask, YES);
+        NSString *date = [[NSDate date] description];
+        NSString *filePath = [[paths objectAtIndex:0] stringByAppendingPathComponent:[NSString stringWithFormat:@"%@.jpg", date]];   // 保存文件的名称
+        NSData *data = [_jpegLibObject imageData];
+        NSLog(@"%lu\n", (unsigned long)_jpegLibObject.lengthCompressed);
+        [data writeToFile:filePath atomically:NO];
+        _compress.image = [_jpegLibObject imageCompressed];
+    }
+    NSLog(@"extra info:%@\n", _jpegLibObject.extraCompressInfo);
 }
 
 - (void)AppleAPIDo
@@ -100,7 +109,7 @@
     NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory,NSUserDomainMask, YES);
     NSString *date = [[NSDate date] description];
     NSString *filePath = [[paths objectAtIndex:0] stringByAppendingPathComponent:[NSString stringWithFormat:@"%@.jpg", date]];   // 保存文件的名称
-    BOOL result = [data writeToFile:filePath atomically:YES]; // 保存成功会返回YES
+    BOOL result = [data writeToFile:filePath atomically:NO]; // 保存成功会返回YES
     NSLog(@"save at:%@\n", filePath);
     NSLog(@"save state:%@\n",@(result));
 }
