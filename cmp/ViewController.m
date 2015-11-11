@@ -59,10 +59,11 @@
     if (_jpegLibObject == nil) {
         _jpegLibObject = [DuJPEGLibObject JPEGLibObject];
     }
-    _jpegLibObject.imageFilePath = @"/Users/baidu/Documents/Xcode Projects/cmp/extra.jpg";
-    int errCode;
-    BOOL need = [_jpegLibObject pretreatment:&errCode];
-    if (errCode == 0 && need) {
+    _jpegLibObject.imageFilePath = @"/Users/baidu/Documents/Xcode Projects/cmp/hhh.jpg";
+    int errCode = 0;
+//    BOOL need = [_jpegLibObject pretreatment:&errCode];
+    if (errCode == 0 /* && need */) {
+        _jpegLibObject.quality = 20;
         [_jpegLibObject compress];
         NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory,NSUserDomainMask, YES);
         NSString *date = [[NSDate date] description];

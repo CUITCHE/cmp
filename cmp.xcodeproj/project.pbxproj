@@ -15,7 +15,7 @@
 		E135476A1BEB0629002F175D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = E13547681BEB0629002F175D /* LaunchScreen.storyboard */; };
 		E13549A61BEB702E002F175D /* libjpeg.a in Frameworks */ = {isa = PBXBuildFile; fileRef = E13549A31BEB702E002F175D /* libjpeg.a */; };
 		E13549A91BEB87CB002F175D /* compress.c in Sources */ = {isa = PBXBuildFile; fileRef = E13549A71BEB87CB002F175D /* compress.c */; };
-		E13AFF271BF0AC9C0017CC02 /* DuJPEGExtraAtAPP3.m in Sources */ = {isa = PBXBuildFile; fileRef = E13AFF261BF0AC9C0017CC02 /* DuJPEGExtraAtAPP3.m */; };
+		E13AFF271BF0AC9C0017CC02 /* DuJPEGExtraAtAPPn.m in Sources */ = {isa = PBXBuildFile; fileRef = E13AFF261BF0AC9C0017CC02 /* DuJPEGExtraAtAPPn.m */; };
 		E15AD15B1BEDB5C600761985 /* DuJPEGLibObject.mm in Sources */ = {isa = PBXBuildFile; fileRef = E15AD15A1BEDB5C600761985 /* DuJPEGLibObject.mm */; };
 /* End PBXBuildFile section */
 
@@ -45,8 +45,8 @@
 		E13549A41BEB702E002F175D /* transupp.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = transupp.h; sourceTree = "<group>"; };
 		E13549A71BEB87CB002F175D /* compress.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = compress.c; sourceTree = "<group>"; };
 		E13549A81BEB87CB002F175D /* compress.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = compress.h; sourceTree = "<group>"; };
-		E13AFF251BF0AC9C0017CC02 /* DuJPEGExtraAtAPP3.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DuJPEGExtraAtAPP3.h; sourceTree = "<group>"; };
-		E13AFF261BF0AC9C0017CC02 /* DuJPEGExtraAtAPP3.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = DuJPEGExtraAtAPP3.m; sourceTree = "<group>"; };
+		E13AFF251BF0AC9C0017CC02 /* DuJPEGExtraAtAPPn.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DuJPEGExtraAtAPPn.h; sourceTree = "<group>"; };
+		E13AFF261BF0AC9C0017CC02 /* DuJPEGExtraAtAPPn.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = DuJPEGExtraAtAPPn.m; sourceTree = "<group>"; };
 		E15AD1591BEDB5C600761985 /* DuJPEGLibObject.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DuJPEGLibObject.h; sourceTree = "<group>"; };
 		E15AD15A1BEDB5C600761985 /* DuJPEGLibObject.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = DuJPEGLibObject.mm; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -66,8 +66,8 @@
 		E135474E1BEB0629002F175D = {
 			isa = PBXGroup;
 			children = (
-				E13AFF251BF0AC9C0017CC02 /* DuJPEGExtraAtAPP3.h */,
-				E13AFF261BF0AC9C0017CC02 /* DuJPEGExtraAtAPP3.m */,
+				E13AFF251BF0AC9C0017CC02 /* DuJPEGExtraAtAPPn.h */,
+				E13AFF261BF0AC9C0017CC02 /* DuJPEGExtraAtAPPn.m */,
 				E15AD1591BEDB5C600761985 /* DuJPEGLibObject.h */,
 				E15AD15A1BEDB5C600761985 /* DuJPEGLibObject.mm */,
 				E13549A71BEB87CB002F175D /* compress.c */,
@@ -204,7 +204,7 @@
 				E135475F1BEB0629002F175D /* AppDelegate.m in Sources */,
 				E135475C1BEB0629002F175D /* main.m in Sources */,
 				E15AD15B1BEDB5C600761985 /* DuJPEGLibObject.mm in Sources */,
-				E13AFF271BF0AC9C0017CC02 /* DuJPEGExtraAtAPP3.m in Sources */,
+				E13AFF271BF0AC9C0017CC02 /* DuJPEGExtraAtAPPn.m in Sources */,
 				E13549A91BEB87CB002F175D /* compress.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

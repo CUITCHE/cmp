@@ -1,6 +1,6 @@
 //
 //  DuJPEGLibObject.mm
-//  cmp
+//  mobileguard
 //
 //  Created by hejunqiu on 15/11/7.
 //  Copyright © 2015年 baidu. All rights reserved.
@@ -20,6 +20,15 @@ using namespace std;
 #define MEMORY_4M (4 * MEMORY_1M)
 #define MEMORY_10M (10 * MEMORY_1M)
 
+typedef NS_ENUM(NSUInteger, DuJPEGCompressStep) {
+    DuJPEGCompressStepReady,
+    DuJPEGCompressStepPretreatment,
+    DuJPEGCompressStepDecompress,
+    DuJPEGCompressStepEstimate,
+    DuJPEGCompressStepCompressing,
+    DuJPEGCompressStepCompressed
+};
+
 #pragma mark - C style
 typedef struct my_error_mgr
 {
@@ -38,36 +47,27 @@ METHODDEF(void) j_progress_callback_method(j_common_ptr cinfo);
 #pragma mark - DuJPEGCompress
 @interface DuJPEGLibObject ()
 {
-    /* This struct contains the JPEG decompression parameters and pointers to
-     * working space (which is allocated as needed by the JPEG library).
-     */
     jpeg_decompress_struct *decompressinfo;
     vector<JSAMPLE> *in_image_data;
     FILE *infile;
 
-    /* This struct contains the JPEG compression parameters and pointers to
-     * working space (which is allocated as needed by the JPEG library).
-     * It is possible to have several such structures, representing multiple
-     * compression/decompression processes, in existence at once.  We refer
-     * to any one struct (and its associated working data) as a "JPEG object".
-     */
     jpeg_compress_struct *compressinfo;
     vector<JSAMPLE> *out_image_data;
 
-    /* We use our private extension JPEG error handler.
-     * Note that this struct must live as long as the main JPEG parameter
-     * struct, to avoid dangling-pointer problems.
-     */
     // common fields
     my_error_mgr *jerr;
     NSTimeInterval invokeTimerval;
     struct jpeg_progress_mgr *progress_mgr;
 }
+
+@property (nonatomic, assign) DuJPEGCompressStep compressStep;
 /// return NSData and copy all of image-compressed bytes.
 @property (nonatomic, strong) NSData *imageData;
 /// Create UIImage from image-compressed bytes.
 @property (nonatomic, strong) UIImage *imageCompressed;
-@property (nonatomic, strong) DuJPEGExtraAtAPP3 *extraCompressInfo;
+@property (nonatomic, strong) DuJPEGExtraAtAPPn *extraCompressInfo;
+@property (nonatomic, assign) NSUInteger lengthOrigin;
+
 @end
 
 
@@ -77,6 +77,7 @@ METHODDEF(void) j_progress_callback_method(j_common_ptr cinfo);
 {
     self = [super init];
     if (self) {
+        _compressStep = DuJPEGCompressStepReady;
         jerr = new my_error_mgr;
         _tolerate = NO;
         _quality = 50;
@@ -123,7 +124,7 @@ METHODDEF(void) j_progress_callback_method(j_common_ptr cinfo);
 {
     _imageCompressed = nil;
     _imageData = nil;
-    _extraCompressInfo = nil;
+
     // initial
     if (!decompressinfo) {
         decompressinfo = new jpeg_decompress_struct;
@@ -134,11 +135,11 @@ METHODDEF(void) j_progress_callback_method(j_common_ptr cinfo);
     }
     in_image_data->clear();
 
-    /* We set up the normal JPEG error routines, then override error_exit. */
+    // We set up the normal JPEG error routines, then override error_exit.
     decompressinfo->err = jpeg_std_error(&jerr->pub);
     jerr->pub.error_exit = my_error_exit;
 
-    /* source file */
+    // source file
     infile = NULL;
     if (_imageFilePath) {
         infile = fopen(_imageFilePath.UTF8String, "rb");
@@ -148,26 +149,29 @@ METHODDEF(void) j_progress_callback_method(j_common_ptr cinfo);
             }
             return NO;
         }
+        // get length of file
+        fseek(infile, 0, SEEK_END);
+        _lengthOrigin = ftell(infile);
+        fseek(infile, 0, SEEK_SET);
     }
-    /* Step 1: allocate and initialize JPEG decompression object */
+    // Step 1: allocate and initialize JPEG decompression object
 
-    /* Establish the setjmp return context for my_error_exit to use. */
+    // Establish the setjmp return context for my_error_exit to use.
     if (setjmp(jerr->setjmp_buffer)) {
-        /* If we get here, the JPEG code has signaled an error.
-         * We need to clean up the JPEG object, close the input file, and return.
-         */
         jpeg_abort_decompress(decompressinfo);
-        fclose(infile);
-        infile = NULL;
+        if (infile) {
+            fclose(infile);
+            infile = NULL;
+        }
         if ([_delegate respondsToSelector:@selector(compress:error:)]) {
             [_delegate compress:self error:DuJPEGLibObjectErrorTypeJumpLogFailed];
         }
         return NO;
     }
-    /* Now we can initialize the JPEG decompression object. */
+    // Now we can initialize the JPEG decompression object.
     jpeg_create_decompress(decompressinfo);
 
-    /* Step 2: specify data source (eg, a file) */
+    // Step 2: specify data source (eg, a file)
     if (infile) {
         jpeg_stdio_src(decompressinfo, infile);
     } else {
@@ -177,6 +181,7 @@ METHODDEF(void) j_progress_callback_method(j_common_ptr cinfo);
             }
             return NO;
         }
+        _lengthOrigin = _compressSourceLength;
         jpeg_mem_src(decompressinfo, _compressSource, _compressSourceLength);
     }
 
@@ -189,113 +194,73 @@ METHODDEF(void) j_progress_callback_method(j_common_ptr cinfo);
         return NO;
     }
     *errCode = 0;
+    if (_compressStep >= DuJPEGCompressStepPretreatment) {
+        return NO;
+    }
+
     if (![self decompressInitial]) {
         *errCode = ~0;
         return NO;
     }
-    /* read markers */
+    _compressStep = DuJPEGCompressStepPretreatment;
+
+    // read markers
     jpeg_save_markers(decompressinfo, JPEG_COM, 0XFFFF);
     for (int i=0; i<16; ++i) {
         jpeg_save_markers(decompressinfo, JPEG_APP0 + i, 0xFFFF);
     }
-    /* Step 3: read file parameters with jpeg_read_header() */
+    // Step 3: read file parameters with jpeg_read_header()
     (void) jpeg_read_header(decompressinfo, TRUE);
     jpeg_saved_marker_ptr head = decompressinfo->marker_list;
     while (head) {
-        if (head->marker == kCompressAPPn + JPEG_APP0) {
+        if (head->marker == kCompressAPPn) {
             NSString *dataSource = [[NSString alloc] initWithBytes:head->data length:head->data_length encoding:NSUTF8StringEncoding];
-            _extraCompressInfo = [[DuJPEGExtraAtAPP3 alloc] initWithJSONString:dataSource];
+            if (!_extraCompressInfo) {
+                _extraCompressInfo = [[DuJPEGExtraAtAPPn alloc] initWithJSONString:dataSource];
+            } else {
+                [_extraCompressInfo parse:dataSource];
+            }
+            break;
         }
         head = head->next;
     }
-    if (_extraCompressInfo) {
-        return NO;
-    }
-    return YES;
+    return (_extraCompressInfo && [_extraCompressInfo isValid]);
 }
 
 - (BOOL)decompress
 {
-    /* We can ignore the return value from jpeg_read_header since
-     *   (a) suspension is not possible with the stdio data source, and
-     *   (b) we passed TRUE to reject a tables-only JPEG file as an error.
-     * See libjpeg.txt for more in/Users/baidu/Documents/Xcode Projects/cmp/1.txtfo.
-     */
-
-    /* Step 4: set parameters for decompression */
-
-    /* set progress method */
-    decompressinfo->progress = progress_mgr;
-
-    /* In this example, we don't need to change any of the defaults set by
-     * jpeg_read_header(), so we do nothing here.
-     */
-
-    /* Step 5: Start decompressor */
-    if ([_delegate respondsToSelector:@selector(willCompress:)]) {
-        [_delegate willCompress:self];
+    // 尝试执行预处理流程
+    int errCode = 0;
+    [self pretreatment:&errCode];
+    if (errCode != 0) {
+        jpeg_abort_decompress(decompressinfo);
+        return NO;
     }
-    (void) jpeg_start_decompress(decompressinfo);
-    /* We can ignore the return value since suspension is not possible
-     * with the stdio data source.
-     */
-    progress_mgr->total_passes = 2;
+    
+    // 解压缩流程已经走过
+    if (_compressStep >= DuJPEGCompressStepDecompress) {
+        return YES;
+    }
+    _compressStep = DuJPEGCompressStepDecompress;
 
-    /* We may need to do some setup of our own at this point before reading
-     * the data.  After jpeg_start_decompress() we have the correct scaled
-     * output image dimensions available, as well as the output colormap
-     * if we asked for color quantization.
-     * In this example, we need to make an output work buffer of the right size.
-     */
-    /* JSAMPLEs per row in output buffer */
+    (void) jpeg_start_decompress(decompressinfo);
+
+    // JSAMPLEs per row in output buffer
     const int row_stride = decompressinfo->output_width * decompressinfo->output_components;
-    /* Make a one-row-high sample array that will go away when done with image */
+    // Make a one-row-high sample array that will go away when done with image
     JSAMPARRAY _buffer_ = (*decompressinfo->mem->alloc_sarray)((j_common_ptr) decompressinfo, JPOOL_IMAGE, row_stride, 1);
     JSAMPROW buffer = _buffer_[0];
-    /* Step 6: while (scan lines remain to be read) */
-    /*           jpeg_read_scanlines(...); */
-
-    /* Here we use the library's state variable cinfo.output_scanline as the
-     * loop counter, so that we don't have to keep track ourselves.
-     */
+    JSAMPROW buffer_end = buffer + row_stride;
     while (decompressinfo->output_scanline < decompressinfo->output_height) {
-        /* jpeg_read_scanlines expects an array of pointers to scanlines.
-         * Here the array is only one element long, but you could ask for
-         * more than one scanline at a time if that's more convenient.
-         */
         jpeg_read_scanlines(decompressinfo, &buffer, 1);
-        in_image_data->insert(in_image_data->end(), buffer, buffer + row_stride);
+        in_image_data->insert(in_image_data->end(), buffer, buffer_end);
     }
-    /* Step 7: Finish decompression */
-    (void) jpeg_finish_decompress(decompressinfo);
-    /* We can ignore the return value since suspension is not possible
-     * with the stdio data source.
-     */
 
-    /* Step 8: Release JPEG decompression object */
-
-    /* This is an important step since it will release a good deal of memory.
-     * jpeg_destroy_decompress(decompressinfo);
-     * 这里，我们需要保留内存，以备下次使用的时候不用再分配，故而这里调用
-     * jpeg_abort_decompress();
-     */
-    jpeg_abort_decompress(decompressinfo);
-
-    /* After finish_decompress, we can close the input file.
-     * Here we postpone it until after no more JPEG errors are possible,
-     * so as to simplify the setjmp error logic above.  (Actually, I don't
-     * think that jpeg_destroy can do an error exit, but why assume anything...)
-     */
     if (infile) {
         fclose(infile);
         infile = NULL;
     }
 
-    /* At this point you may want to check to see whether any corrupt-data
-     * warnings occurred (test whether jerr.pub.num_warnings is nonzero).
-     */
-
-    /* And we're done! */
     return YES;
 }
 
@@ -306,6 +271,7 @@ METHODDEF(void) j_progress_callback_method(j_common_ptr cinfo);
         compressinfo = new jpeg_compress_struct;
         compressinfo->client_data = (__bridge void *)self;
     }
+
     if (!out_image_data) {
         out_image_data = new vector<JSAMPLE>();
     }
@@ -317,48 +283,27 @@ METHODDEF(void) j_progress_callback_method(j_common_ptr cinfo);
     out_image_data->resize(memory);
     compressinfo->err = jpeg_std_error(&jerr->pub);
 
-    /* Now we can initialize the JPEG compression object. */
     jpeg_create_compress(compressinfo);
 
-    /* Step 2: specify data destination (eg, a file) */
-    /* Note: steps 2 and 3 can be done in either order. */
-
-    /* 这里我们将destination源设置到vector中去 */
+    // 这里我们将destination源设置到vector中去
     unsigned long outsize = out_image_data->size();
     JSAMPLE *buffer_pointer = &(*out_image_data)[0];
     jpeg_mem_dest(compressinfo, &buffer_pointer, &outsize);
-    /* Step 3: set parameters for compression */
 
-    /* First we supply a description of the input image.
-     * Four fields of the cinfo struct must be filled in:
-     */
-    compressinfo->image_width = decompressinfo->image_width;            /* image width and height, in pixels */
+    // image width and height, in pixels
+    compressinfo->image_width = decompressinfo->image_width;
     compressinfo->image_height = decompressinfo->image_height;
-    compressinfo->input_components = decompressinfo->num_components;	/* # of color components per pixel */
-    compressinfo->in_color_space = JCS_RGB;                             /* colorspace of input image */
-    /* Now use the library's routine to set default compression parameters.
-     * (You must set at least cinfo.in_color_space before calling this,
-     * since the defaults depend on the source color space.)
-     */
+    // # of color components per pixel
+    compressinfo->input_components = decompressinfo->num_components;
+    // colorspace of input image
+    compressinfo->in_color_space = JCS_RGB;
+
     jpeg_set_defaults(compressinfo);
     // improve compress quality and needs more time. But can be ignored.
     compressinfo->optimize_coding = TRUE;
-    /* set progress method */
-    compressinfo->progress = progress_mgr;
 
-    /* Now you can set any non-default parameters you wish to.
-     * Here we just illustrate the use of quality (quantization table) scaling:
-     */
     jpeg_set_quality(compressinfo, _quality, TRUE /* limit to baseline-JPEG values */);
-
-    /* Step 4: Start compressor */
-
-    /* TRUE ensures that we will write a complete interchange-JPEG file.
-     * Pass TRUE unless you are very sure of what you're doing.
-     */
-    jpeg_start_compress(compressinfo, TRUE);
-    progress_mgr->completed_passes = 1;
-    progress_mgr->pass_counter = 0;
+    compressinfo->progress = NULL;
 }
 
 - (void)compress
@@ -368,53 +313,48 @@ METHODDEF(void) j_progress_callback_method(j_common_ptr cinfo);
         return;
     }
 
-
-    /* Step 1: allocate and initialize JPEG compression object */
-
-    /* We have to set up the error handler first, in case the initialization
-     * step fails.  (Unlikely, but it could happen if you are out of memory.)
-     * This routine fills in the contents of struct jerr, and returns jerr's
-     * address which we place into the link field in cinfo.
-     */
+    if ([_delegate respondsToSelector:@selector(willCompress:)]) {
+        [_delegate willCompress:self];
+    }
     [self compressInitial];
+
+    // set progress method
+    compressinfo->progress = progress_mgr;
+    jpeg_start_compress(compressinfo, TRUE);
 
     // wirte extra info
     [self writeExtraInfoIntoCompressor];
 
-    /* Step 5: while (scan lines remain to be written) */
-    /*           jpeg_write_scanlines(...); */
-
-    /* Here we use the library's state variable cinfo.next_scanline as the
-     * loop counter, so that we don't have to keep track ourselves.
-     * To keep things simple, we pass one scanline per call; you can pass
-     * more if you wish, though.
-     */
-    const int row_stride = compressinfo->image_width * compressinfo->input_components;	/* JSAMPLEs per row in image_buffer */
-    JSAMPROW row_pointer;	/* pointer to JSAMPLE row[s] */
+    // JSAMPLEs per row in image_buffer
+    const int row_stride = compressinfo->image_width * compressinfo->input_components;
+    // pointer to JSAMPLE row[s]
+    JSAMPROW row_pointer;
     JSAMPLE *image_buffer = &(*in_image_data)[0];
     while (compressinfo->next_scanline < compressinfo->image_height) {
-        /* jpeg_write_scanlines expects an array of pointers to scanlines.
-         * Here the array is only one element long, but you could pass
-         * more than one scanline at a time if that's more convenient.
-         */
         row_pointer = &image_buffer[compressinfo->next_scanline * row_stride];
         (void) jpeg_write_scanlines(compressinfo, &row_pointer, 1);
     }
-    /* Step 6: Finish compression */
+
     jpeg_finish_compress(compressinfo);
     [self JPEGLibObject:NO progress:100];
 
-    /* Step 7: release JPEG compression object */
-
-    /* This is an important step since it will release a good deal of memory.
-     * 这里不释放所有资源，在dealloc中统一释放，便于下次再利用
-     */
+    // 这里不释放所有资源，在dealloc中统一释放，便于下次再利用
     jpeg_abort_compress(compressinfo);
 
-    /* And we're done! */
     if ([_delegate respondsToSelector:@selector(didCompress:)]) {
         [_delegate didCompress:self];
     }
+    [self resetCompressState];
+}
+
+- (void)resetCompressState
+{
+    (void) jpeg_finish_decompress(decompressinfo);
+
+    // 这里，我们需要保留内存，以备下次使用的时候不用再分配，故而这里调用
+    // jpeg_abort_decompress();
+    jpeg_abort_decompress(decompressinfo);
+    _compressStep = DuJPEGCompressStepReady;
 }
 
 - (void)memoryWarnings
@@ -422,14 +362,18 @@ METHODDEF(void) j_progress_callback_method(j_common_ptr cinfo);
     [self releaseMemory];
 }
 
+#pragma mark - hepler
 - (void)writeExtraInfoIntoCompressor
 {
-    _extraCompressInfo = [[DuJPEGExtraAtAPP3 alloc] init];
+    _extraCompressInfo = [[DuJPEGExtraAtAPPn alloc] init];
     NSString *stringStream = [_extraCompressInfo stringForJSON];
-    jpeg_write_marker(compressinfo, JPEG_APP0 + _extraCompressInfo.APPn, (const JOCTET *)(stringStream.UTF8String), (unsigned int)stringStream.length);
+    jpeg_write_marker(compressinfo, _extraCompressInfo.APPn, (const JOCTET *)(stringStream.UTF8String), (unsigned int)stringStream.length);
     jpeg_saved_marker_ptr head = decompressinfo->marker_list;
     while (head) {
-        jpeg_write_marker(compressinfo, head->marker, head->data, head->data_length);
+        if (head->marker != _extraCompressInfo.APPn) {
+            jpeg_write_marker(compressinfo, head->marker, head->data, head->data_length);
+        }
+        head = head->next;
     }
 }
 

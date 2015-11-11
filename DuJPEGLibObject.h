@@ -1,6 +1,6 @@
 //
 //  DuJPEGLibObject.h
-//  cmp
+//  mobileguard
 //
 //  Created by hejunqiu on 15/11/7.
 //  Copyright © 2015年 baidu. All rights reserved.
@@ -8,11 +8,11 @@
 
 #import <Foundation/Foundation.h>
 #import <CoreGraphics/CGGeometry.h>
-#import "DuJPEGExtraAtAPP3.h"
+#import "DuJPEGExtraAtAPPn.h"
 
 @class UIImage;
 
-@protocol DuJPEGComressDelegate;
+@protocol DuJPEGCompressDelegate;
 
 typedef NS_ENUM(Byte, DuJPEGLibObjectErrorType) {
     DuJPEGCompressErrorTypeNone,
@@ -22,16 +22,6 @@ typedef NS_ENUM(Byte, DuJPEGLibObjectErrorType) {
 };
 
 #pragma mark - DuJPEGLibObject
-/**
- * Here is code demo
- * @code _jpegLibObject.imageFilePath = @"/Users/baidu/Documents/Xcode Projects/cmp/extra.jpg";
- * int errCode;
- * BOOL need = [_jpegLibObject pretreatment:&errCode];
- * if (errCode == 0 && need) {
- * [_jpegLibObject compress];
- * }
- * NSLog(@"extra info:%@\n", _jpegLibObject.extraCompressInfo); @endcode
- */
 @interface DuJPEGLibObject : NSObject
 
 /// Input source may come from disk. So here is file path of image. Also comes from memory. But imageFilePath has highest priority.
@@ -39,7 +29,7 @@ typedef NS_ENUM(Byte, DuJPEGLibObjectErrorType) {
 @property (nonatomic, assign) Byte *compressSource;
 @property (nonatomic, assign) NSUInteger compressSourceLength;
 
-/// Quality of image wants to be compressed. Its range is integer[0,100], and 0 is lowest, 100 is best quality. Default is 65.
+/// Quality of image wants to be compressed. Its range is integer[0,100], and 0 is lowest, 100 is best quality. Default is 50.
 @property (nonatomic, assign) int quality;
 
 /// Set YES if you don't care size. Default is NO that is image'size less than origin image after compressed.
@@ -53,22 +43,28 @@ typedef NS_ENUM(Byte, DuJPEGLibObjectErrorType) {
 @property (nonatomic, strong, readonly) NSData *imageData;
 /// Create UIImage from image-compressed bytes.
 @property (nonatomic, strong, readonly) UIImage *imageCompressed;
+
 /// You can learn more about image from property extraCompressInfo.
-@property (nonatomic, strong, readonly) DuJPEGExtraAtAPP3 *extraCompressInfo;
+@property (nonatomic, strong, readonly) DuJPEGExtraAtAPPn *extraCompressInfo;
+/// length of origin image.
+@property (nonatomic, assign, readonly) NSUInteger lengthOrigin;
 
 /// If you want to control compress process, you can control throught it.
-@property (nonatomic, weak) id<DuJPEGComressDelegate> delegate;
+@property (nonatomic, weak) id<DuJPEGCompressDelegate> delegate;
 
 + (instancetype)JPEGLibObject;
 
 /**
  * Invoke it before start compress.
  * We need not to treat the image if image was treated by app.
+ * So, this function just do that. And it may estimate memory size after
+ * compressed.
  *
  * @param errCode must not be NULL!
  *
  * @return YES if image needs to be treated, otherwise is NO.
- * @note Return value is valide when errCode return 0.
+ *
+ * @note Return value is valid when errCode return 0.
  */
 - (BOOL)pretreatment:(int *)errCode;
 
@@ -80,11 +76,16 @@ typedef NS_ENUM(Byte, DuJPEGLibObjectErrorType) {
  */
 - (void)compress;
 
+/**
+ * Force to reset compress state. That is prepare for next-compress.
+ */
+- (void)resetCompressState;
+
 - (void)memoryWarnings;
 
 @end
 
-@protocol DuJPEGComressDelegate <NSObject>
+@protocol DuJPEGCompressDelegate <NSObject>
 @optional
 // common
 - (void)willCompress:(DuJPEGLibObject *)compressObject;

@@ -1,22 +1,30 @@
 //
-//  DuJPEGExtraAtAPP3.m
-//  cmp
+//  DuJPEGExtraAtAPPn.m
+//  mobileguard
 //
 //  Created by hejunqiu on 15/11/9.
 //  Copyright © 2015年 baidu. All rights reserved.
 //
 
-#import "DuJPEGExtraAtAPP3.h"
+#import "DuJPEGExtraAtAPPn.h"
 #import <objc/runtime.h>
 
 NSString *const kDuCompressExtraHeadString = @"Compressed by Baidu in China";
-const int kHeadStringLength = 28;
-const int kCompressVersion = 300;
-const int kCompressAPPn = 3;
-const int kReserve = 0x7F;
-const NSUInteger kDuCompressExtraFlag = ((kHeadStringLength << 24) | (kCompressVersion << 16) | (kCompressAPPn << 8) | kReserve);
+const int kJPEG_APP0 = 0xE0;
+const int kJPEG_APP0Default = 0xE0E0E0E0;
 
-@implementation DuJPEGExtraAtAPP3
+const int kHeadStringLength = 28;
+
+const int kCompressVersion = 300;
+const int kCompressVersionDefault = -0xFF09;
+
+const int kCompressAPPn = kJPEG_APP0 + 3;
+const int kReserve = 0x7F;
+
+const NSUInteger kDuCompressExtraFlag = ((kHeadStringLength << 24) | (kCompressVersion << 16) | (kCompressAPPn << 8) | kReserve);
+const NSUInteger kDuCImpressExtraFlagDefault = ~0;
+
+@implementation DuJPEGExtraAtAPPn
 
 - (instancetype)init
 {
@@ -25,7 +33,7 @@ const NSUInteger kDuCompressExtraFlag = ((kHeadStringLength << 24) | (kCompressV
         _headString = kDuCompressExtraHeadString;
         _version = kCompressVersion;
         _compressDateTime = [NSDate date].description;
-        _APPn = 3;
+        _APPn = kCompressAPPn;
         _flag = kDuCompressExtraFlag;
     }
     return self;
@@ -42,22 +50,26 @@ const NSUInteger kDuCompressExtraFlag = ((kHeadStringLength << 24) | (kCompressV
 
 - (instancetype)initWithJSONString:(NSString *)JSON
 {
-    NSError *err = nil;
-    NSDictionary *dict = [NSJSONSerialization JSONObjectWithData:[JSON dataUsingEncoding:NSUTF8StringEncoding]
-                                                         options:0
-                                                           error:&err];
-    if (err) {
-        return nil;
+
+    self = [super init];
+    if (self) {
+        [self parse:JSON];
     }
-    return [self initWithJSON:dict];
+    return self;
 
 }
 
 - (void)convert:(NSDictionary *)dataSource
 {
+    // set values to Default
+    _flag = kDuCImpressExtraFlagDefault;
+    _version = kCompressVersionDefault;
+    _APPn = kJPEG_APP0Default;
+
     NSArray *keys = [self propertyKeys];
     id propertyValue;
-    for (NSString *key in [dataSource allKeys]) {
+    NSArray *keysForDataSource = [dataSource allKeys];
+    for (NSString *key in keysForDataSource) {
         if ([keys containsObject:key]) {
             propertyValue = [dataSource valueForKey:key];
             if (propertyValue && ![propertyValue isKindOfClass:[NSNull class]]) {
@@ -86,8 +98,8 @@ const NSUInteger kDuCompressExtraFlag = ((kHeadStringLength << 24) | (kCompressV
 
 - (NSDictionary *)JSONFromSelf
 {
-    NSMutableDictionary *dict = [NSMutableDictionary dictionary];
     NSArray *keys = [self propertyKeys];
+    NSMutableDictionary *dict = [NSMutableDictionary dictionaryWithCapacity:keys.count];
     id value = nil;
     for (NSString *key in keys) {
         value = [self valueForKey:key];
@@ -110,8 +122,33 @@ const NSUInteger kDuCompressExtraFlag = ((kHeadStringLength << 24) | (kCompressV
     return jsonString;
 }
 
+- (void)parse:(NSString *)JSON
+{
+    NSError *err = nil;
+    NSDictionary *dict = nil;
+    @try {
+        [NSJSONSerialization JSONObjectWithData:[JSON dataUsingEncoding:NSUTF8StringEncoding]
+                                        options:0
+                                          error:&err];
+    }
+    @catch (NSException *exception) {
+        NSLog(@"%@\n",exception);
+    }
+    if (!dict) {
+        return;
+    }
+    [self convert:dict];
+}
+
+- (BOOL)isValid
+{
+    BOOL ret = ((_APPn != 0) && (_APPn != 0x0F) && (_APPn != 0x08) && (_APPn >= kJPEG_APP0 && _APPn <= kJPEG_APP0 + 0x0F) && (_version == kCompressVersion) && (_flag == kDuCompressExtraFlag));
+    return ret;
+}
+
 - (NSString *)description
 {
     return [self stringForJSON];
 }
+
 @end
