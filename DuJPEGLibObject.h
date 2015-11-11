@@ -32,9 +32,6 @@ typedef NS_ENUM(Byte, DuJPEGLibObjectErrorType) {
 /// Quality of image wants to be compressed. Its range is integer[0,100], and 0 is lowest, 100 is best quality. Default is 50.
 @property (nonatomic, assign) int quality;
 
-/// Set YES if you don't care size. Default is NO that is image'size less than origin image after compressed.
-@property (nonatomic, assign) BOOL tolerate;
-
 @property (nonatomic, assign, readonly) NSUInteger lengthCompressed;
 @property (nonatomic, assign, readonly) const Byte *bufferCompressed;
 
@@ -71,16 +68,14 @@ typedef NS_ENUM(Byte, DuJPEGLibObjectErrorType) {
 /**
  * Begin compressing image.
  *
- * You can set value of properties of imageFilePath, quality, tolerate before use it.
+ * You can set value of properties of imageFilePath, quality before use it.
  * Once begin, properties above do not effact compress process.
  */
 - (void)compress;
 
 /**
- * Force to reset compress state. That is prepare for next-compress.
+ * It will release c-style memory. It's safe.
  */
-- (void)resetCompressState;
-
 - (void)memoryWarnings;
 
 @end

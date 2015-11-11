@@ -32,9 +32,8 @@ typedef NS_ENUM(NSUInteger, DuJPEGCompressStep) {
 #pragma mark - C style
 typedef struct my_error_mgr
 {
-    struct jpeg_error_mgr pub;	/* "public" fields */
-
-    jmp_buf setjmp_buffer;      /* for return to caller */
+    struct jpeg_error_mgr pub;
+    jmp_buf setjmp_buffer;
 }my_error_mgr;
 
 typedef struct my_error_mgr * my_error_ptr;
@@ -79,7 +78,6 @@ METHODDEF(void) j_progress_callback_method(j_common_ptr cinfo);
     if (self) {
         _compressStep = DuJPEGCompressStepReady;
         jerr = new my_error_mgr;
-        _tolerate = NO;
         _quality = 50;
         progress_mgr = new struct jpeg_progress_mgr;
         progress_mgr->progress_monitor = j_progress_callback_method;
@@ -237,7 +235,7 @@ METHODDEF(void) j_progress_callback_method(j_common_ptr cinfo);
         return NO;
     }
     
-    // 解压缩流程已经走过
+    // 解压缩流程是否已经走过
     if (_compressStep >= DuJPEGCompressStepDecompress) {
         return YES;
     }
@@ -308,6 +306,7 @@ METHODDEF(void) j_progress_callback_method(j_common_ptr cinfo);
 
 - (void)compress
 {
+    [self resetCompressState];
     // Firstly decompress JPEG
     if (![self decompress]) {
         return;
@@ -344,16 +343,16 @@ METHODDEF(void) j_progress_callback_method(j_common_ptr cinfo);
     if ([_delegate respondsToSelector:@selector(didCompress:)]) {
         [_delegate didCompress:self];
     }
-    [self resetCompressState];
 }
 
 - (void)resetCompressState
 {
-    (void) jpeg_finish_decompress(decompressinfo);
-
-    // 这里，我们需要保留内存，以备下次使用的时候不用再分配，故而这里调用
-    // jpeg_abort_decompress();
-    jpeg_abort_decompress(decompressinfo);
+    if (decompressinfo && decompressinfo->global_state == DSTATE_SCANNING) {
+        (void) jpeg_finish_decompress(decompressinfo);
+        // 这里，我们需要保留内存，以备下次使用的时候不用再分配，故而这里调用
+        // jpeg_abort_decompress();
+        jpeg_abort_decompress(decompressinfo);
+    }
     _compressStep = DuJPEGCompressStepReady;
 }
 
@@ -422,7 +421,7 @@ METHODDEF(void) j_progress_callback_method(j_common_ptr cinfo);
 #pragma mark - invoke delegate's method
 - (void)JPEGLibObject:(BOOL)isCallback progress:(NSUInteger)progress
 {
-    if (isCallback && [[NSProcessInfo processInfo] systemUptime] - invokeTimerval < 0.001) {
+    if (isCallback && [[NSProcessInfo processInfo] systemUptime] - invokeTimerval < 0.020) {
         return;
     }
     if ([_delegate respondsToSelector:@selector(compress:progress:)]) {

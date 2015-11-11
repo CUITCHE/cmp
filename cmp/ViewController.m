@@ -71,7 +71,7 @@
         NSData *data = [_jpegLibObject imageData];
         NSLog(@"%lu\n", (unsigned long)_jpegLibObject.lengthCompressed);
         [data writeToFile:filePath atomically:NO];
-        _compress.image = [_jpegLibObject imageCompressed];
+//        _compress.image = [_jpegLibObject imageCompressed];
     }
     NSLog(@"extra info:%@\n", _jpegLibObject.extraCompressInfo);
 }
