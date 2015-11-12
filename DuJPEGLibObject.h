@@ -15,10 +15,13 @@
 @protocol DuJPEGCompressDelegate;
 
 typedef NS_ENUM(Byte, DuJPEGLibObjectErrorType) {
-    DuJPEGCompressErrorTypeNone,
-    DuJPEGCompressErrorTypeFileNotExists,
+    DuJPEGLibObjectErrorTypeNone,
+    DuJPEGLibObjectErrorTypeFileNotExists,
     DuJPEGLibObjectErrorTypeJumpLogFailed,
-    DuJPEGLibObjectErrorTypeNoImageSource
+    DuJPEGLibObjectErrorTypeNoImageSource,
+    DuJPEGLibObjectErrorTypeNoNeedCompress,
+    DuJPEGLibObjectErrorTypeNeedsCompress,
+    DuJPEGLibObjectErrorTypeDecompressInitialFailed
 };
 
 #pragma mark - DuJPEGLibObject
@@ -63,7 +66,7 @@ typedef NS_ENUM(Byte, DuJPEGLibObjectErrorType) {
  *
  * @note Return value is valid when errCode return 0.
  */
-- (BOOL)pretreatment:(int *)errCode;
+- (DuJPEGLibObjectErrorType)pretreatment;
 
 /**
  * Begin compressing image.

@@ -24,7 +24,6 @@ typedef NS_ENUM(NSUInteger, DuJPEGCompressStep) {
     DuJPEGCompressStepReady,
     DuJPEGCompressStepPretreatment,
     DuJPEGCompressStepDecompress,
-    DuJPEGCompressStepEstimate,
     DuJPEGCompressStepCompressing,
     DuJPEGCompressStepCompressed
 };
@@ -66,7 +65,7 @@ METHODDEF(void) j_progress_callback_method(j_common_ptr cinfo);
 @property (nonatomic, strong) UIImage *imageCompressed;
 @property (nonatomic, strong) DuJPEGExtraAtAPPn *extraCompressInfo;
 @property (nonatomic, assign) NSUInteger lengthOrigin;
-
+@property (nonatomic, assign) DuJPEGLibObjectErrorType errorType;
 @end
 
 
@@ -97,6 +96,7 @@ METHODDEF(void) j_progress_callback_method(j_common_ptr cinfo);
 
 - (void)releaseMemory
 {
+    [self resetCompressState];
     if (decompressinfo) {
         jpeg_destroy_decompress(decompressinfo);
         decompressinfo->client_data = NULL;
@@ -114,15 +114,10 @@ METHODDEF(void) j_progress_callback_method(j_common_ptr cinfo);
     release_pointer(jerr);
     // progress
     release_pointer(progress_mgr);
-    _imageCompressed = nil;
-    _imageData = nil;
 }
 
 - (BOOL)decompressInitial
 {
-    _imageCompressed = nil;
-    _imageData = nil;
-
     // initial
     if (!decompressinfo) {
         decompressinfo = new jpeg_decompress_struct;
@@ -143,7 +138,7 @@ METHODDEF(void) j_progress_callback_method(j_common_ptr cinfo);
         infile = fopen(_imageFilePath.UTF8String, "rb");
         if (infile == NULL) {
             if ([_delegate respondsToSelector:@selector(compress:error:)]) {
-                [_delegate compress:self error:DuJPEGCompressErrorTypeFileNotExists];
+                [_delegate compress:self error:DuJPEGLibObjectErrorTypeFileNotExists];
             }
             return NO;
         }
@@ -156,7 +151,7 @@ METHODDEF(void) j_progress_callback_method(j_common_ptr cinfo);
 
     // Establish the setjmp return context for my_error_exit to use.
     if (setjmp(jerr->setjmp_buffer)) {
-        jpeg_abort_decompress(decompressinfo);
+        jpeg_destroy_decompress(decompressinfo);
         if (infile) {
             fclose(infile);
             infile = NULL;
@@ -186,62 +181,65 @@ METHODDEF(void) j_progress_callback_method(j_common_ptr cinfo);
     return YES;
 }
 
-- (BOOL)pretreatment:(int *)errCode
+- (DuJPEGLibObjectErrorType)pretreatment
 {
-    if (!errCode) {
-        return NO;
-    }
-    *errCode = 0;
-    if (_compressStep >= DuJPEGCompressStepPretreatment) {
-        return NO;
-    }
-
-    if (![self decompressInitial]) {
-        *errCode = ~0;
-        return NO;
-    }
-    _compressStep = DuJPEGCompressStepPretreatment;
-
-    // read markers
-    jpeg_save_markers(decompressinfo, JPEG_COM, 0XFFFF);
-    for (int i=0; i<16; ++i) {
-        jpeg_save_markers(decompressinfo, JPEG_APP0 + i, 0xFFFF);
-    }
-    // Step 3: read file parameters with jpeg_read_header()
-    (void) jpeg_read_header(decompressinfo, TRUE);
-    jpeg_saved_marker_ptr head = decompressinfo->marker_list;
-    while (head) {
-        if (head->marker == kCompressAPPn) {
-            NSString *dataSource = [[NSString alloc] initWithBytes:head->data length:head->data_length encoding:NSUTF8StringEncoding];
-            if (!_extraCompressInfo) {
-                _extraCompressInfo = [[DuJPEGExtraAtAPPn alloc] initWithJSONString:dataSource];
-            } else {
-                [_extraCompressInfo parse:dataSource];
-            }
+    do {
+        if (_compressStep >= DuJPEGCompressStepPretreatment) {
             break;
         }
-        head = head->next;
-    }
-    return (_extraCompressInfo && [_extraCompressInfo isValid]);
+
+        if (![self decompressInitial]) {
+            _errorType = DuJPEGLibObjectErrorTypeDecompressInitialFailed;
+            break;
+        }
+        _compressStep = DuJPEGCompressStepPretreatment;
+
+        _errorType = DuJPEGLibObjectErrorTypeNoNeedCompress;
+        // read markers
+        jpeg_save_markers(decompressinfo, JPEG_COM, 0XFFFF);
+        for (int i=0; i<16; ++i) {
+            jpeg_save_markers(decompressinfo, JPEG_APP0 + i, 0xFFFF);
+        }
+        // Step 3: read file parameters with jpeg_read_header()
+        jpeg_read_header(decompressinfo, TRUE);
+        jpeg_saved_marker_ptr head = decompressinfo->marker_list;
+        while (head) {
+            if (head->marker == kCompressAPPn) {
+                NSString *dataSource = [[NSString alloc] initWithBytes:head->data
+                                                                length:head->data_length
+                                                              encoding:NSUTF8StringEncoding];
+                if (!_extraCompressInfo) {
+                    _extraCompressInfo = [[DuJPEGExtraAtAPPn alloc] initWithJSONString:dataSource];
+                } else {
+                    [_extraCompressInfo parse:dataSource];
+                }
+                if ([_extraCompressInfo isValid]) {
+                    _errorType = DuJPEGLibObjectErrorTypeNeedsCompress;
+                    break;
+                }
+            }
+            head = head->next;
+        }
+    } while (0);
+
+    return _errorType;
 }
 
 - (BOOL)decompress
 {
     // 尝试执行预处理流程
-    int errCode = 0;
-    [self pretreatment:&errCode];
-    if (errCode != 0) {
-        jpeg_abort_decompress(decompressinfo);
+    if ([self pretreatment] == DuJPEGLibObjectErrorTypeDecompressInitialFailed) {
+        jpeg_destroy_decompress(decompressinfo);
         return NO;
     }
-    
+
     // 解压缩流程是否已经走过
     if (_compressStep >= DuJPEGCompressStepDecompress) {
         return YES;
     }
     _compressStep = DuJPEGCompressStepDecompress;
 
-    (void) jpeg_start_decompress(decompressinfo);
+    jpeg_start_decompress(decompressinfo);
 
     // JSAMPLEs per row in output buffer
     const int row_stride = decompressinfo->output_width * decompressinfo->output_components;
@@ -306,7 +304,6 @@ METHODDEF(void) j_progress_callback_method(j_common_ptr cinfo);
 
 - (void)compress
 {
-    [self resetCompressState];
     // Firstly decompress JPEG
     if (![self decompress]) {
         return;
@@ -319,6 +316,7 @@ METHODDEF(void) j_progress_callback_method(j_common_ptr cinfo);
 
     // set progress method
     compressinfo->progress = progress_mgr;
+    _compressStep = DuJPEGCompressStepCompressing;
     jpeg_start_compress(compressinfo, TRUE);
 
     // wirte extra info
@@ -331,29 +329,38 @@ METHODDEF(void) j_progress_callback_method(j_common_ptr cinfo);
     JSAMPLE *image_buffer = &(*in_image_data)[0];
     while (compressinfo->next_scanline < compressinfo->image_height) {
         row_pointer = &image_buffer[compressinfo->next_scanline * row_stride];
-        (void) jpeg_write_scanlines(compressinfo, &row_pointer, 1);
+        jpeg_write_scanlines(compressinfo, &row_pointer, 1);
     }
 
     jpeg_finish_compress(compressinfo);
     [self JPEGLibObject:NO progress:100];
 
-    // 这里不释放所有资源，在dealloc中统一释放，便于下次再利用
-    jpeg_abort_compress(compressinfo);
+    jpeg_destroy_compress(compressinfo);
 
     if ([_delegate respondsToSelector:@selector(didCompress:)]) {
         [_delegate didCompress:self];
     }
+    _compressStep = DuJPEGCompressStepCompressed;
 }
 
 - (void)resetCompressState
 {
     if (decompressinfo && decompressinfo->global_state == DSTATE_SCANNING) {
-        (void) jpeg_finish_decompress(decompressinfo);
-        // 这里，我们需要保留内存，以备下次使用的时候不用再分配，故而这里调用
-        // jpeg_abort_decompress();
-        jpeg_abort_decompress(decompressinfo);
+        jpeg_finish_decompress(decompressinfo);
+        jpeg_destroy_decompress(decompressinfo);
+    }
+    if (infile) {
+        fclose(infile);
+        infile = NULL;
     }
     _compressStep = DuJPEGCompressStepReady;
+    _lengthOrigin = 0;
+    _compressSource = NULL;
+    _compressSourceLength = 0;
+    _imageCompressed = nil;
+    _imageData = nil;
+    _lengthOrigin = 0;
+    _errorType = DuJPEGLibObjectErrorTypeNone;
 }
 
 - (void)memoryWarnings
@@ -377,44 +384,85 @@ METHODDEF(void) j_progress_callback_method(j_common_ptr cinfo);
 }
 
 #pragma mark - proerties
+- (void)setImageFilePath:(NSString *)imageFilePath
+{
+    if (![_imageFilePath isEqualToString:imageFilePath]) {
+        _imageFilePath = [NSString stringWithString:imageFilePath];
+        [self resetCompressState];
+    }
+}
+
+- (void)setCompressSource:(Byte *)compressSource
+{
+    if (_compressSource != compressSource) {
+        _compressSource = compressSource;
+        [self resetCompressState];
+    }
+}
+
 - (void)setQuality:(int)quality
 {
-    if (quality <= 100 && quality >= 0) {
+    if (quality <= 100 && quality >= 0 && _quality != quality) {
         _quality = quality;
+        [self resetCompressState];
     }
 }
 
 - (NSUInteger)lengthCompressed
 {
-    return out_image_data->size() - static_cast<vector<JSAMPLE>::size_type>(compressinfo->dest->free_in_buffer);
+    if (_compressStep == DuJPEGCompressStepCompressed) {
+        return out_image_data->size() - static_cast<vector<JSAMPLE>::size_type>(compressinfo->dest->free_in_buffer);
+    } else {
+        return NSUIntegerMax;
+    }
 }
 
 - (const Byte *)bufferCompressed
 {
-    return out_image_data->data();
+    if (_compressStep == DuJPEGCompressStepCompressed) {
+        return out_image_data->data();
+    } else {
+        return NULL;
+    }
 }
 
 - (CGSize)imageSize
 {
-    CGSize imageSize = CGSizeMake(static_cast<CGFloat>(decompressinfo->image_width), static_cast<CGFloat>(decompressinfo->image_height));
-    return imageSize;
+    if (_compressStep == DuJPEGCompressStepCompressed) {
+        CGSize imageSize = CGSizeMake(static_cast<CGFloat>(decompressinfo->image_width), static_cast<CGFloat>(decompressinfo->image_height));
+        return imageSize;
+    } else {
+        return CGSizeZero;
+    }
 }
 
 - (NSData *)imageData
 {
-    if (_imageData) {
-        return _imageData;
-    }
-    _imageData = [NSData dataWithBytes:out_image_data->data() length:self.lengthCompressed];
+    do {
+        if (_compressStep != DuJPEGCompressStepCompressed) {
+            break;
+        }
+        if (_imageData) {
+            break;
+        }
+        _imageData = [NSData dataWithBytes:out_image_data->data() length:self.lengthCompressed];
+    } while (0);
+
     return _imageData;
 }
 
 - (UIImage *)imageCompressed
 {
-    if (_imageCompressed) {
-        return _imageCompressed;
-    }
-    _imageCompressed = [UIImage imageWithData:self.imageData];
+    do {
+        if (_compressStep != DuJPEGCompressStepCompressed) {
+            break;
+        }
+        if (_imageCompressed) {
+            break;
+        }
+        _imageCompressed = [UIImage imageWithData:self.imageData];
+    } while (0);
+
     return _imageCompressed;
 }
 

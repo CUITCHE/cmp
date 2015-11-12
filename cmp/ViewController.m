@@ -9,7 +9,7 @@
 #import "ViewController.h"
 #import "DuJPEGLibObject.h"
 
-#define kInitialCompressQuality 0.50
+#define kInitialCompressQuality 0.20
 
 @interface ViewController ()
 
@@ -30,7 +30,7 @@
 - (IBAction)onGoButtonClicked:(id)sender
 {
     if (!_origin.image) {
-        _origin.image = [UIImage imageNamed:@"hh"];
+//        _origin.image = [UIImage imageNamed:@"hhh"];
     }
     BOOL useAppleAPI = NO;
     if (useAppleAPI) {
@@ -64,13 +64,11 @@
 //    BOOL need = [_jpegLibObject pretreatment:&errCode];
     if (errCode == 0 /* && need */) {
         _jpegLibObject.quality = 20;
+        [_jpegLibObject pretreatment];
         [_jpegLibObject compress];
-        NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory,NSUserDomainMask, YES);
-        NSString *date = [[NSDate date] description];
-        NSString *filePath = [[paths objectAtIndex:0] stringByAppendingPathComponent:[NSString stringWithFormat:@"%@.jpg", date]];   // 保存文件的名称
         NSData *data = [_jpegLibObject imageData];
         NSLog(@"%lu\n", (unsigned long)_jpegLibObject.lengthCompressed);
-        [data writeToFile:filePath atomically:NO];
+        [self save:data];
 //        _compress.image = [_jpegLibObject imageCompressed];
     }
     NSLog(@"extra info:%@\n", _jpegLibObject.extraCompressInfo);
@@ -78,8 +76,8 @@
 
 - (void)AppleAPIDo
 {
-    NSData *data = [self compressImage:_origin.image qualityLimit:0.4];
-    _compress.image = [UIImage imageWithData:data];
+    NSData *data = [self compressImage:[UIImage imageNamed:@"hhh"] qualityLimit:kInitialCompressQuality];
+//    _compress.image = [UIImage imageWithData:data];
     [self save:data];
 }
 
