@@ -24,21 +24,43 @@ typedef NS_ENUM(Byte, DuJPEGLibObjectErrorType) {
     DuJPEGLibObjectErrorTypeDecompressInitialFailed
 };
 
+typedef NS_ENUM(NSUInteger, DuJPEGCompressStep) {
+    DuJPEGCompressStepReady,
+    DuJPEGCompressStepPretreatment,
+    DuJPEGCompressStepDecompress,
+    DuJPEGCompressStepCompressing,
+    DuJPEGCompressStepCompressed
+};
+
 #pragma mark - DuJPEGLibObject
 @interface DuJPEGLibObject : NSObject
 
-/// Input source may come from disk. So here is file path of image. Also comes from memory. But imageFilePath has highest priority.
+/**
+ * Input source may come from disk. So here is file path of image. Also comes
+ * from memory. But imageFilePath has highest priority. Once imageFilePath or
+ * compressSource changed, compress state(see DuJPEGCompressStep) will be reset.
+ *
+ * @see DuJPEGCompressStep.
+ */
 @property (nonatomic, copy) NSString *imageFilePath;
 @property (nonatomic, assign) Byte *compressSource;
 @property (nonatomic, assign) NSUInteger compressSourceLength;
 
-/// Quality of image wants to be compressed. Its range is integer[0,100], and 0 is lowest, 100 is best quality. Default is 50.
+/**
+ * Quality of image wants to be compressed. Its range is integer[0,100],
+ * and 0 is lowest, 100 is best quality. Default is 50.
+ * Once quality has been changed, compress state(see DuJPEGCompressStep) will be reset.
+ *
+ * @see DuJPEGCompressStep.
+ */
 @property (nonatomic, assign) int quality;
 
 @property (nonatomic, assign, readonly) NSUInteger lengthCompressed;
 @property (nonatomic, assign, readonly) const Byte *bufferCompressed;
 
 @property (nonatomic, assign, readonly) CGSize imageSize;
+/// Represent compress state.
+@property (nonatomic, assign, readonly) DuJPEGCompressStep compressStep;
 /// Return NSData and copy all of image-compressed bytes.
 @property (nonatomic, strong, readonly) NSData *imageData;
 /// Create UIImage from image-compressed bytes.
@@ -49,7 +71,7 @@ typedef NS_ENUM(Byte, DuJPEGLibObjectErrorType) {
 /// length of origin image.
 @property (nonatomic, assign, readonly) NSUInteger lengthOrigin;
 
-/// If you want to control compress process, you can control throught it.
+/// If you want to control compress process, you can do it throught it.
 @property (nonatomic, weak) id<DuJPEGCompressDelegate> delegate;
 
 + (instancetype)JPEGLibObject;
@@ -57,14 +79,11 @@ typedef NS_ENUM(Byte, DuJPEGLibObjectErrorType) {
 /**
  * Invoke it before start compress.
  * We need not to treat the image if image was treated by app.
- * So, this function just do that. And it may estimate memory size after
- * compressed.
+ * So, this function just do that. 
  *
- * @param errCode must not be NULL!
+ * @return DuJPEGLibObjectErrorTypeNeedsCompress if image needs to be treated.
  *
- * @return YES if image needs to be treated, otherwise is NO.
- *
- * @note Return value is valid when errCode return 0.
+ * @see DuJPEGLibObjectErrorType.
  */
 - (DuJPEGLibObjectErrorType)pretreatment;
 

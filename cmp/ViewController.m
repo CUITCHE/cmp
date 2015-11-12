@@ -76,7 +76,7 @@
 
 - (void)AppleAPIDo
 {
-    NSData *data = [self compressImage:[UIImage imageNamed:@"hhh"] qualityLimit:kInitialCompressQuality];
+    NSData *data = [self compressImage:[UIImage imageNamed:@"hh"] qualityLimit:kInitialCompressQuality];
 //    _compress.image = [UIImage imageWithData:data];
     [self save:data];
 }

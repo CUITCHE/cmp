@@ -20,14 +20,6 @@ using namespace std;
 #define MEMORY_4M (4 * MEMORY_1M)
 #define MEMORY_10M (10 * MEMORY_1M)
 
-typedef NS_ENUM(NSUInteger, DuJPEGCompressStep) {
-    DuJPEGCompressStepReady,
-    DuJPEGCompressStepPretreatment,
-    DuJPEGCompressStepDecompress,
-    DuJPEGCompressStepCompressing,
-    DuJPEGCompressStepCompressed
-};
-
 #pragma mark - C style
 typedef struct my_error_mgr
 {
@@ -76,10 +68,7 @@ METHODDEF(void) j_progress_callback_method(j_common_ptr cinfo);
     self = [super init];
     if (self) {
         _compressStep = DuJPEGCompressStepReady;
-        jerr = new my_error_mgr;
         _quality = 50;
-        progress_mgr = new struct jpeg_progress_mgr;
-        progress_mgr->progress_monitor = j_progress_callback_method;
     }
     return self;
 }
@@ -119,6 +108,13 @@ METHODDEF(void) j_progress_callback_method(j_common_ptr cinfo);
 - (BOOL)decompressInitial
 {
     // initial
+    if (!jerr) {
+        jerr = new my_error_mgr;
+    }
+    if (!progress_mgr) {
+        progress_mgr = new struct jpeg_progress_mgr;
+        progress_mgr->progress_monitor = j_progress_callback_method;
+    }
     if (!decompressinfo) {
         decompressinfo = new jpeg_decompress_struct;
         decompressinfo->client_data = (__bridge void *)self;
@@ -194,7 +190,7 @@ METHODDEF(void) j_progress_callback_method(j_common_ptr cinfo);
         }
         _compressStep = DuJPEGCompressStepPretreatment;
 
-        _errorType = DuJPEGLibObjectErrorTypeNoNeedCompress;
+        _errorType = DuJPEGLibObjectErrorTypeNeedsCompress;
         // read markers
         jpeg_save_markers(decompressinfo, JPEG_COM, 0XFFFF);
         for (int i=0; i<16; ++i) {
@@ -214,7 +210,7 @@ METHODDEF(void) j_progress_callback_method(j_common_ptr cinfo);
                     [_extraCompressInfo parse:dataSource];
                 }
                 if ([_extraCompressInfo isValid]) {
-                    _errorType = DuJPEGLibObjectErrorTypeNeedsCompress;
+                    _errorType = DuJPEGLibObjectErrorTypeNoNeedCompress;
                     break;
                 }
             }
@@ -247,11 +243,11 @@ METHODDEF(void) j_progress_callback_method(j_common_ptr cinfo);
     JSAMPARRAY _buffer_ = (*decompressinfo->mem->alloc_sarray)((j_common_ptr) decompressinfo, JPOOL_IMAGE, row_stride, 1);
     JSAMPROW buffer = _buffer_[0];
     JSAMPROW buffer_end = buffer + row_stride;
+
     while (decompressinfo->output_scanline < decompressinfo->output_height) {
         jpeg_read_scanlines(decompressinfo, &buffer, 1);
         in_image_data->insert(in_image_data->end(), buffer, buffer_end);
     }
-
     if (infile) {
         fclose(infile);
         infile = NULL;
@@ -359,7 +355,6 @@ METHODDEF(void) j_progress_callback_method(j_common_ptr cinfo);
     _compressSourceLength = 0;
     _imageCompressed = nil;
     _imageData = nil;
-    _lengthOrigin = 0;
     _errorType = DuJPEGLibObjectErrorTypeNone;
 }
 
@@ -475,7 +470,7 @@ METHODDEF(void) j_progress_callback_method(j_common_ptr cinfo);
     if ([_delegate respondsToSelector:@selector(compress:progress:)]) {
         [_delegate compress:self progress:progress];
     }
-    NSLog(@"compressor complete:%lu%%...", (unsigned long)progress);
+    //    NSLog(@"compressor complete:%lu%%...", (unsigned long)progress);
     invokeTimerval = [[NSProcessInfo processInfo] systemUptime];
 }
 
